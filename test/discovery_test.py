@@ -4,6 +4,7 @@ import unittest
 import uuid
 from datetime import timedelta
 
+from counselor.endpoint.encoding import StatusResponse
 from src.counselor.discovery import ServiceDiscovery
 from src.counselor.filter import KeyValuePair
 from src.counselor.watcher import ReconfigurableService
@@ -18,8 +19,8 @@ class TestService(ReconfigurableService):
         self.last_config = None
         self.failed_service_check = False
 
-    def notify_failed_service_check(self):
-        LOGGER.info("Failed service check")
+    def notify_failed_service_check(self, response: StatusResponse):
+        LOGGER.info("Failed service check: {}".format(response.as_string()))
         self.failed_service_check = True
 
     def reconfigure(self, new_config=dict) -> bool:

@@ -2,6 +2,7 @@ import logging
 from datetime import timedelta
 from threading import Event
 
+from counselor.endpoint.encoding import StatusResponse
 from .client import Consul
 from .endpoint.service import ServiceDefinition
 from .trigger import Trigger
@@ -17,7 +18,7 @@ class ReconfigurableService:
     def __init__(self):
         pass
 
-    def notify_failed_service_check(self):
+    def notify_failed_service_check(self, response: StatusResponse):
         """If the service fails to fetch the ServiceDefinition from Consul, this method is called.
         """
         pass
@@ -44,9 +45,13 @@ class ServiceWatcherTask:
     def check_service(self):
         LOGGER.info("Checking service: {}".format(self.service_definition.key))
 
-        status, new_service_details = self.consul_client.agent.service.get_details(self.service_definition.key)
+        try:
+            status, new_service_details = self.consul_client.agent.service.get_details(self.service_definition.key)
+        except Exception as exc:
+            return self.service.notify_failed_service_check(StatusResponse.new_error_result_with_exception_only(exc))
+
         if not status.successful:
-            self.service.notify_failed_service_check()
+            self.service.notify_failed_service_check(status)
             return
 
         if self.last_service_config_hash == "":

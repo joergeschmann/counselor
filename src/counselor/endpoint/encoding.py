@@ -48,10 +48,11 @@ class StatusResponse:
     """StatusResponse is used as a standard response to indicate whether a request to Consul was successful or not.
     """
 
-    def __init__(self, successful=True, kind="", message=""):
+    def __init__(self, successful=True, kind="", message="", exc: Exception = None):
         self.successful = successful
         self.kind = kind
         self.message = message
+        self.exc = exc
 
     @staticmethod
     def new_successful_result():
@@ -60,6 +61,10 @@ class StatusResponse:
     @staticmethod
     def new_error_result(kind="", message=""):
         return StatusResponse(successful=False, kind=kind, message=message)
+
+    @staticmethod
+    def new_error_result_with_exception_only(exc: Exception):
+        return StatusResponse(successful=False, exc=exc)
 
     @staticmethod
     def new_error_result_with_message_only(message=""):
@@ -73,7 +78,8 @@ class StatusResponse:
             return StatusResponse.new_error_result(kind=response.status_code, message=response.payload)
 
     def as_string(self) -> str:
-        return "successful: {} - {}: {}".format(self.successful, self.kind, self.message)
+        return "successful: {} \nkind: {} \nmessage: {} \nexc: {}".format(self.successful, self.kind, self.message,
+                                                                          self.exc)
 
 
 class Encoder(object):

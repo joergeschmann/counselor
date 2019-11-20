@@ -25,11 +25,12 @@ python -m pip install counselor
 ## Usage
 ```python
 import logging
+from datetime import timedelta
 
+from counselor.client import ConsulConfig
+from counselor.endpoint.encoding import StatusResponse
 from counselor.watcher import ReconfigurableService
 from counselor.discovery import ServiceDiscovery
-
-from datetime import timedelta
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -41,9 +42,11 @@ class TestService(ReconfigurableService):
         super().__init__()
         self.last_config = None
         self.failed_service_check = False
-    def notify_failed_service_check(self):
-        LOGGER.info("Failed service check")
+
+    def notify_failed_service_check(self, response: StatusResponse):
+        LOGGER.info("Failed service check: {}".format(response.as_string()))
         self.failed_service_check = True
+
     def reconfigure(self, new_config=dict) -> bool:
         LOGGER.info("New configuration received: {}".format(new_config))
         self.last_config = new_config
@@ -51,9 +54,11 @@ class TestService(ReconfigurableService):
         return True
 
 # Create a ServiceDiscovery instance to interact with consul
-service_discovery = ServiceDiscovery.new_service_discovery_with_default_consul_client()
+consul_config = ConsulConfig(host="127.0.0.1", port=8500)
+service_discovery = ServiceDiscovery(consul_config)
 
 # Register a service in Consul
+# Keep in mind that for now, the config values in meta need to be all strings 
 register_status = service_discovery.register_service(service_key="my-test-service", tags=["test"], meta={
     "version": "1.0",
     "status": "active",
