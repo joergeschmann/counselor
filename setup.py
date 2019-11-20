@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='counselor',
-      version='0.1.2',
+      version='0.1.3',
       description='Package to interact with HashiCorp Consul',
       long_description=long_description,
       long_description_content_type="text/markdown",
@@ -20,7 +20,7 @@ setup(name='counselor',
           'Programming Language :: Python :: 3.6',
       ],
       license='MIT',
-      install_requires=[],
+      install_requires=['requests>=2.22.0'],
       package_dir={'': 'src'},
       packages=find_namespace_packages(where='src')
       )
