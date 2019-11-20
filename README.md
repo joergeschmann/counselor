@@ -11,6 +11,17 @@ You can use the Makefile to install the lib locally
 make install
 ```
 
+## Installation
+Install from the test pypi repository:
+```ignorelang
+python -m pip install --index-url https://test.pypi.org/simple/ counselor
+```
+
+Install from the productive pypi repository, you can install it from there:
+```ignorelang
+python -m pip install counselor
+```
+
 ## Usage
 ```python
 import logging

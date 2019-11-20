@@ -9,5 +9,5 @@ docker run -it --rm --name consul-test -p 8500:8500 consul agent -dev -client=0.
 
 ## Minikube
 ```ignorelang
-kubectl apply -f ../.kube/consul
+kubectl apply -f .kube/consul/simple
 ```
