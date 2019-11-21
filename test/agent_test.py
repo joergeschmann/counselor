@@ -1,10 +1,8 @@
-import json
 import logging
 import unittest
-import uuid
 
 from src.counselor import client
-from src.counselor.endpoint.encoding import ServiceDefinition
+from src.counselor.endpoint.encoder import ServiceDefinition
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
@@ -12,44 +10,14 @@ LOGGER = logging.getLogger(__name__)
 
 class AgentTests(unittest.TestCase):
     def setUp(self):
-        self.test_key_prefix = "unit/test"
+        LOGGER.info("Setting up")
         self.test_service_key = "unit-test-service"
         self.consul_config = client.ConsulConfig()
         self.consul = client.Consul(config=self.consul_config)
 
     def tearDown(self):
+        LOGGER.info("Cleaning up")
         self.consul.agent.service.deregister(self.test_service_key)
-        self.consul.kv.delete(self.test_key_prefix)
-        LOGGER.info("cleaning up")
-
-    def test_kv_simple_str_configs(self):
-        key = self.test_key_prefix + "/foo"
-        config_value = uuid.uuid4().hex
-        self.consul.kv.set(key, config_value)
-
-        found_value = self.consul.kv.get(key)
-        self.assertEqual(config_value, found_value)
-
-    def test_kv_dict_configs(self):
-        test_config = {
-            "key": "value",
-            "active": True,
-            "pairs": ["btc", "etc", "ren"],
-            "strategy": {
-                "goal": 42,
-                "risk": 3.1415,
-            }
-        }
-
-        key = self.test_key_prefix + "/config"
-
-        self.consul.kv.set(key, test_config)
-
-        found_entry = self.consul.kv.get(key)
-
-        parsed_config = json.loads(found_entry)
-
-        self.assertEqual(test_config, parsed_config, "Configs do not match")
 
     def test_services_registration(self):
         service_definition = ServiceDefinition(
