@@ -6,6 +6,9 @@ dist
 
 # python
 venv
+*.pyc
+__pycache__/
+
 
 # jetbrains ide folders
 .idea

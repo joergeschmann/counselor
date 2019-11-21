@@ -1,5 +1,5 @@
 from .endpoint.agent import Agent
-from .endpoint.http import Request
+from .endpoint.http_client import HttpRequest
 from .endpoint.keyvalue import KV
 
 
@@ -14,7 +14,7 @@ class ConsulConfig:
                  datacenter=None,
                  token=None,
                  scheme='http',
-                 transport=Request()):
+                 transport=HttpRequest()):
         self.host = host
         self.port = port
         self.version = version

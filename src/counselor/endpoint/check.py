@@ -1,7 +1,8 @@
-from .endpoint import Endpoint
+from .common import Response
+from .http_endpoint import HttpEndpoint
 
 
-class Check(Endpoint):
+class Check(HttpEndpoint):
     """
         At the moment checks are implemented as periodic http requests with our own watcher implementation.
         The next step is to involve the consul agent.
@@ -9,7 +10,7 @@ class Check(Endpoint):
     """
 
     def register(self, name, script=None, check_id=None, interval=None, ttl=None, notes=None, http=None):
-        return self._put_response(url_parts=['register'], query=None, payload={
+        response = self.put_response(url_parts=['register'], query=None, payload={
             'ID': check_id,
             'Name': name,
             'Notes': notes,
@@ -17,16 +18,21 @@ class Check(Endpoint):
             'HTTP': http,
             'Interval': interval,
             'TTL': ttl
-        }, response_parser=None)
+        })
+        return Response.create_from_http_response(response)
 
     def deregister(self, check_id):
-        return self._put_response(url_parts=['deregister', check_id], response_parser=None)
+        response = self.put_response(url_parts=['deregister', check_id])
+        return Response.create_from_http_response(response)
 
     def ttl_pass(self, check_id):
-        return self._put_response(url_parts=['pass', check_id], response_parser=None)
+        response = self.put_response(url_parts=['pass', check_id])
+        return Response.create_from_http_response(response)
 
     def ttl_warn(self, check_id):
-        return self._put_response(url_parts=['warn', check_id], response_parser=None)
+        response = self.put_response(url_parts=['warn', check_id])
+        return Response.create_from_http_response(response)
 
     def ttl_fail(self, check_id):
-        return self._put_response(url_parts=['fail', check_id], response_parser=None)
+        response = self.put_response(url_parts=['fail', check_id])
+        return Response.create_from_http_response(response)

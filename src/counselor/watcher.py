@@ -1,90 +1,107 @@
 import logging
 from datetime import timedelta
-from threading import Event
+from threading import Event, Thread
 
 from .client import Consul
-from .endpoint.service import ServiceDefinition
-from .trigger import Trigger
+from .config import ReconfigurableService
+from .endpoint.common import Response
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ReconfigurableService:
-    """Interface for a service to be notified by the watcher.
-    Extend this class to encapsulate all the logic to reconfigure your service.
+class Task(Thread):
+    """Base class to represent a Task that is executed by a trigger.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, interval: timedelta, stop_event: Event):
+        Thread.__init__(self, daemon=True)
+        self.interval = interval
+        self.stop_event = stop_event
 
-    def notify_failed_service_check(self):
-        """If the service fails to fetch the ServiceDefinition from Consul, this method is called.
+    def get_name(self):
+        """Return a unique name to identify the task
         """
         pass
 
-    def reconfigure(self, new_config=dict) -> bool:
-        """If the ServiceWatcher notices a change, this method is called to give the new configuration.
+    def check(self):
+        """Method to implement the check that is periodically executed
         """
         pass
 
+    def stop(self):
+        self.stop_event.set()
+        self.join()
 
-class ServiceWatcherTask:
-    """Fetches the config from Consul and notifies the ReconfigurableService if there is an update.
+    def run(self):
+        while not self.stop_event.wait(self.interval.total_seconds()):
+            self.check()
+
+
+class ServiceWatcherTask(Task):
+    """Fetches the service definition from Consul services and notifies the ReconfigurableService if there is an update.
     """
 
-    def __init__(self, service: ReconfigurableService, service_definition: ServiceDefinition, consul_client: Consul):
+    def __init__(self, service: ReconfigurableService, consul_client: Consul, interval: timedelta, stop_event: Event):
+        super().__init__(interval, stop_event)
         self.service = service
-        self.service_definition = service_definition
         self.last_service_config_hash = ""
         self.consul_client = consul_client
 
     def get_name(self) -> str:
-        return self.service_definition.key
+        return self.service.service_key
 
-    def check_service(self):
-        LOGGER.info("Checking service: {}".format(self.service_definition.key))
+    def check(self):
+        LOGGER.info("Checking service: {}".format(self.service.service_key))
 
-        status, new_service_details = self.consul_client.agent.service.get_details(self.service_definition.key)
-        if not status.successful:
-            self.service.notify_failed_service_check()
+        try:
+            response, service_definition = self.consul_client.agent.service.get_details(self.service.service_key)
+        except Exception as exc:
+            return self.service.notify_failed_service_check(Response.create_error_result_with_exception_only(exc))
+
+        if not response.successful:
+            self.service.notify_failed_service_check(response)
             return
 
         if self.last_service_config_hash == "":
-            self.last_service_config_hash = new_service_details.content_hash
+            self.last_service_config_hash = service_definition.content_hash
             return
 
-        if self.last_service_config_hash != new_service_details.content_hash:
-            successful = self.service.reconfigure(new_service_details.meta)
+        if self.last_service_config_hash != service_definition.content_hash:
+            successful = self.service.reconfigure(service_definition.meta)
             if successful:
-                self.last_service_config_hash = new_service_details.content_hash
+                self.last_service_config_hash = service_definition.content_hash
             else:
                 LOGGER.error("Reconfiguration was not successful")
 
 
-class ServiceWatcher:
-    """Watcher that executes the periodic checks for configuration updates.
+class KVConfigWatcherTask(Task):
+    """Fetches the config from Consul KV store and notifies the ReconfigurableService if there is an update.
     """
 
-    def __init__(self, task: ServiceWatcherTask, interval_seconds: timedelta = timedelta(seconds=5)):
-        self.trigger = Trigger()
-        self.trigger.add_task(task.get_name(), func=task.check_service, interval=interval_seconds, daemon=True)
-        self.running = False
+    def __init__(self, service: ReconfigurableService, consul_client: Consul, interval: timedelta, stop_event: Event):
+        super().__init__(interval, stop_event)
+        self.service = service
+        self.last_modify_index = 0
+        self.consul_client = consul_client
 
-    @staticmethod
-    def new_service_watcher_from_task_details(service: ReconfigurableService, service_definition: ServiceDefinition,
-                                              consul_client: Consul, check_interval: timedelta) -> 'ServiceWatcher':
-        watcher_task = ServiceWatcherTask(service, service_definition, consul_client)
-        return ServiceWatcher(watcher_task, check_interval)
+    def get_name(self) -> str:
+        return self.service.service_key
 
-    def start_nonblocking(self):
-        self.trigger.run()
-        self.running = True
+    def check(self):
+        LOGGER.info("Checking service config: {}".format(self.service.service_key))
 
-    def start_blocking(self, close_event: Event):
-        self.start_nonblocking()
-        close_event.wait()
-        self.stop()
+        try:
+            response, consul_config = self.consul_client.kv.get(self.service.config_path.compose_path())
+        except Exception as exc:
+            return self.service.notify_failed_service_check(Response.create_error_result_with_exception_only(exc))
 
-    def stop(self):
-        self.trigger.stop_tasks()
-        self.running = False
+        if not response.successful:
+            self.service.notify_failed_service_check(response)
+            return
+
+        if self.last_modify_index < consul_config.modify_index:
+            successful = self.service.reconfigure(consul_config.value)
+            if successful:
+                self.last_modify_index = consul_config.modify_index
+            else:
+                LOGGER.error("Reconfiguration was not successful")

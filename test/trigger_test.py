@@ -7,24 +7,30 @@ from threading import Event
 
 from src.counselor.signal import SignalHandler
 from src.counselor.trigger import Trigger
+from src.counselor.watcher import Task
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
+
+
+class LoggerTask(Task):
+    def __init__(self, interval=timedelta(seconds=1), stop_event=Event()):
+        super().__init__(interval=interval, stop_event=stop_event)
+
+    def check(self):
+        print("{}s task's current time : {}".format(self.interval.total_seconds(), time.ctime()))
 
 
 class TestTrigger(unittest.TestCase):
     def test_triggers(self):
         trigger = Trigger()
 
-        def test_2s_func():
-            print("2s task's current time : {}".format(time.ctime()))
+        stop_event = Event()
+        two_sec_task = LoggerTask(timedelta(seconds=2), stop_event)
+        trigger.add_task(two_sec_task)
 
-        trigger.add_task("2s Task", func=test_2s_func, interval=timedelta(seconds=2))
-
-        def test_3s_func():
-            print("3s task's current time : {}".format(time.ctime()))
-
-        trigger.add_task("3s Task", func=test_3s_func, interval=timedelta(seconds=3))
+        three_sec_task = LoggerTask(timedelta(seconds=3), stop_event)
+        trigger.add_task(three_sec_task)
 
         trigger.run()
 

@@ -1,79 +1,89 @@
 import logging
 
-from .endpoint import Endpoint
+from .common import Response
+from .decoder import JsonDecoder, ConsulKVDecoder
+from .entity import ConsulKeyValue
+from .http_client import HttpResponse
+from .http_endpoint import HttpEndpoint
 
 LOGGER = logging.getLogger(__name__)
 
 
-class KV(Endpoint):
-    """Key value store interface to consul.
+class KV(HttpEndpoint):
+    """Key value store interface to consul. This class is meant to store dicts as values.
 
         TODO: use StatusResponse as returned value
     """
 
-    def get(self, item, default=None, raw=False):
+    def get_raw(self, item) -> (Response, dict):
+        query_params = {'raw': True}
+        response = self._get(item=item, query_params=query_params)
+
+        endpoint_response = Response.create_from_http_response(response)
+        if not endpoint_response.successful:
+            return endpoint_response, None
+
+        decoder = JsonDecoder()
+        result = decoder.decode(response.payload)
+        if not decoder.successful:
+            endpoint_response.update_by_decode_result(decoder)
+
+        return endpoint_response, result
+
+    def get(self, item) -> (Response, ConsulKeyValue):
         """Get a value.
+        Raw means without the Consul metadata like CreateIndex and ModifyIndex.
         """
 
-        response = self._get_item(item, raw)
-        if isinstance(response, dict):
-            return response.get('Value', default)
+        response = self._get(item=item)
 
-        return response or default
+        endpoint_response = Response.create_from_http_response(response)
+        if not endpoint_response.successful:
+            return endpoint_response, None
 
-    def set(self, item, value):
+        decoder = ConsulKVDecoder()
+        consul_kv = decoder.decode(response.payload)
+        if not decoder.successful:
+            endpoint_response.update_by_decode_result(decoder)
+
+        return endpoint_response, consul_kv
+
+    def _get(self, item: str, query_params=None) -> HttpResponse:
+        if query_params is None:
+            query_params = {}
+
+        item = item.lstrip('/')
+        return self.get_response(url_parts=[item], query=query_params)
+
+    def set(self, item: str, value, flags=None) -> Response:
         """Set a value.
         """
 
-        return self._set_item(item, value)
-
-    def delete(self, item, recurse=False):
-        """Remove an item.
-        """
-
-        query_params = {'recurse': True} if recurse else {}
-        return self._transport.delete(self._build_uri([item], query_params))
-
-    def acquire_lock(self, item, session):
-        """Set a lock.
-        """
-
-        return self._put_response([item], {'acquire': session})
-
-    def release_lock(self, item, session):
-        """Release a lock.
-        """
-        return self._put_response([item], {'release': session})
-
-    def _get_item(self, item, raw=False):
-        """Get an item from Consul.
-        """
-
-        item = item.lstrip('/')
-        query_params = {'raw': True} if raw else {}
-        response = self._transport.get(self._build_uri([item], query_params))
-
-        if not response.is_successful():
-            LOGGER.warning("Could not get KV: {}".format(response.as_string()))
-            return None
-        else:
-            return response.payload
-
-    def _set_item(self, item, value, flags=None):
-        """Set an item in Consul.
-        """
-
-        if item and item.endswith('/'):
-            item = item.rstrip('/')
-
+        item = item.rstrip('/')
         query_params = {}
         if flags is not None:
             query_params['flags'] = flags
 
-        response = self._transport.put(self._build_uri([item], query_params), value)
+        response = self.put_response(url_parts=[item], query=query_params, payload=value)
+        return Response.create_from_http_response(response)
 
-        if not response.is_successful():
-            LOGGER.warning("Could not set KV: {}".format(response.as_string()))
-            return None
-        else:
-            return response.payload
+    def delete(self, item, recurse=False) -> Response:
+        """Remove an item.
+        """
+
+        query_params = {'recurse': True} if recurse else {}
+        response = self.delete_response(url_parts=[item], query=query_params)
+        return Response.create_from_http_response(response)
+
+    def acquire_lock(self, item, session) -> Response:
+        """Set a lock.
+        """
+
+        response = self.put_response(url_parts=[item], query=None, payload={'acquire': session})
+        return Response.create_from_http_response(response)
+
+    def release_lock(self, item, session) -> Response:
+        """Release a lock.
+        """
+        response = self.put_response(url_parts=[item], query=None, payload={'release': session})
+        return Response.create_from_http_response(response)

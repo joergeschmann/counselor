@@ -1,12 +1,15 @@
 import logging
 from datetime import timedelta
+from threading import Event
 from typing import List
 
 from .client import Consul, ConsulConfig
-from .endpoint.encoding import StatusResponse
+from .config import ReconfigurableService
+from .endpoint.common import Response
 from .endpoint.service import ServiceDefinition
 from .filter import Filter, KeyValuePair, Operators
-from .watcher import ServiceWatcher, ReconfigurableService
+from .trigger import Trigger
+from .watcher import KVConfigWatcherTask
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,35 +22,32 @@ class ServiceDiscovery:
     """
 
     def __init__(self, consul_config=ConsulConfig()):
-        self.consul = Consul(consul_config)
-        self.service_definition = None
-        self.config_watch = None
+        self._consul = Consul(consul_config)
+        self._service_definition = None
+        self._trigger = None
+        # TODO: set the stop event from arguments
+        self._stop_event = Event()
 
     @staticmethod
     def new_service_discovery_with_default_consul_client():
         return ServiceDiscovery(ConsulConfig())
 
-    def load_service(self, key: str) -> StatusResponse:
-        """Activats an existing ServiceDefinition from Consul.
+    def fetch_config(self, service: ReconfigurableService) -> bool:
+        """Fetch the config from consul to initially configure your service
         """
+        response, found_config = self._consul.kv.get_raw(service.config_path.compose_path())
+        if not response.successful or found_config is None:
+            return False
 
-        status_response, service_definition = self.consul.agent.service.get_details(key)
-        if status_response.successful:
-            self.service_definition = service_definition
+        service.reconfigure(found_config)
 
-        return status_response
-
-    def get_active_service_key(self) -> str:
-        """Return the key of the active ServiceDefinition.
+    def store_config(self, service: ReconfigurableService) -> Response:
+        """Store the config in Consul
         """
-
-        if self.service_definition is None:
-            return ""
-        else:
-            return self.service_definition.key
+        return self._consul.kv.set(service.config_path.compose_path(), service.current_config)
 
     def search_for_services(self, tags: List[str] = None, meta: List[KeyValuePair] = None) -> (
-            StatusResponse, List[ServiceDefinition]):
+            Response, List[ServiceDefinition]):
         """Search for active ServiceDefinitions.
         """
 
@@ -69,60 +69,60 @@ class ServiceDiscovery:
             query_tuple = ('filter', filter_expression)
             filter_tuples.append(query_tuple)
 
-        return self.consul.agent.services(filter_tuples)
+        return self._consul.agent.services(filter_tuples)
 
-    def register_service(self, service_key: str, tags=None, meta=None) -> StatusResponse:
+    def register_service(self, service_key: str, tags=None, meta=None) -> Response:
         """Register a ServiceDefinition in Consul.
         """
 
-        self.service_definition = ServiceDefinition.new_simple_service_definition(service_key, tags, meta)
+        self._service_definition = ServiceDefinition.new_simple_service_definition(service_key, tags, meta)
         return self.update_service_definition()
 
-    def update_service_definition(self) -> StatusResponse:
-        """Update the ServiceDefinition in Consul. For example if you want to update the configuration.
+    def update_service_definition(self) -> Response:
+        """Update the ServiceDefinition in Consul.
         """
 
-        LOGGER.info("Updating definition {}".format(self.service_definition.key))
-        return self.consul.agent.service.register(self.service_definition)
+        LOGGER.info("Updating definition {}".format(self._service_definition.key))
+        return self._consul.agent.service.register(self._service_definition)
 
-    def deregister_service(self) -> StatusResponse:
+    def deregister_service(self) -> Response:
         """Delete the ServiceDefinition in Consul. Also stops the watcher if still active.
         """
 
-        LOGGER.info("Deregistering service {}".format(self.service_definition.key))
+        LOGGER.info("Deregistering service {}".format(self._service_definition.key))
 
         try:
-            if self.config_watch is not None and self.config_watch.running:
+            if self._trigger is not None and self._trigger.running:
                 LOGGER.info("Stopping config watch first")
                 self.stop_config_watch()
 
-            return self.consul.agent.service.deregister(self.service_definition.key)
+            return self._consul.agent.service.deregister(self._service_definition.key)
         except Exception as exc:
-            return StatusResponse.new_error_result_with_message_only("{}".format(exc))
+            return Response.create_error_result_with_message_only("{}".format(exc))
 
-    def start_config_watch(self, service: ReconfigurableService, check_interval: timedelta) -> StatusResponse:
+    def start_config_watch(self, service: ReconfigurableService, check_interval: timedelta) -> Response:
         """Create a watcher that periodically checks for config changes.
         """
 
-        LOGGER.info("Starting config watch for {}".format(self.service_definition.key))
-        if self.service_definition is None:
-            return StatusResponse.new_error_result_with_message_only("No service registered")
+        LOGGER.info("Starting config watch for {}".format(service.service_key))
 
         try:
-            self.config_watch = ServiceWatcher.new_service_watcher_from_task_details(service, self.service_definition,
-                                                                                     self.consul, check_interval)
-            self.config_watch.start_nonblocking()
+            watcher_task = KVConfigWatcherTask(service, self._consul, check_interval, self._stop_event)
+            self._trigger = Trigger()
+            self._trigger.add_task(watcher_task)
+            self._trigger.run_nonblocking()
         except Exception as exc:
-            return StatusResponse.new_error_result_with_message_only("{}".format(exc))
+            return Response.create_error_result_with_message_only("{}".format(exc))
 
-        return StatusResponse.new_successful_result()
+        return Response.create_successful_result()
 
     def stop_config_watch(self):
         """Stop the watcher.
         """
 
-        LOGGER.info("Stopping config watch for {}".format(self.service_definition.key))
+        LOGGER.info("Stopping config watch for {}".format(self._service_definition.key))
         try:
-            self.config_watch.stop()
+            self._stop_event.set()
+            self._trigger.stop_tasks()
         except Exception as exc:
             LOGGER.info("Error when stopping watcher: {}".format(exc))
