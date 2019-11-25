@@ -13,6 +13,10 @@ class Trigger(Thread):
         self.tasks = []
         self.running = False
 
+    def clear(self):
+        self.stop_tasks()
+        self.tasks.clear()
+
     def add_task(self, task: Thread):
         self.tasks.append(task)
 
@@ -39,4 +43,5 @@ class Trigger(Thread):
             LOGGER.info("Stopping task {}".format(t.name))
             t.stop()
 
+        self.running = False
         LOGGER.info("Trigger exited.")

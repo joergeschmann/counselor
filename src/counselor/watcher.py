@@ -48,13 +48,14 @@ class ServiceWatcherTask(Task):
         self.consul_client = consul_client
 
     def get_name(self) -> str:
-        return self.service.service_key
+        return self.service.get_service_key()
 
     def check(self):
-        LOGGER.info("Checking service: {}".format(self.service.service_key))
+        LOGGER.info("Checking service: {}".format(self.service.get_service_key()))
 
         try:
-            response, service_definition = self.consul_client.agent.service.get_details(self.service.service_key)
+            response, new_service_definition = self.consul_client.agent.service.get_details(
+                self.service.get_service_key())
         except Exception as exc:
             return self.service.notify_failed_service_check(Response.create_error_result_with_exception_only(exc))
 
@@ -63,13 +64,13 @@ class ServiceWatcherTask(Task):
             return
 
         if self.last_service_config_hash == "":
-            self.last_service_config_hash = service_definition.content_hash
+            self.last_service_config_hash = new_service_definition.content_hash
             return
 
-        if self.last_service_config_hash != service_definition.content_hash:
-            successful = self.service.reconfigure(service_definition.meta)
+        if self.last_service_config_hash != new_service_definition.content_hash:
+            successful = self.service.reconfigure(new_service_definition.meta)
             if successful:
-                self.last_service_config_hash = service_definition.content_hash
+                self.last_service_config_hash = new_service_definition.content_hash
             else:
                 LOGGER.error("Reconfiguration was not successful")
 
@@ -85,13 +86,13 @@ class KVConfigWatcherTask(Task):
         self.consul_client = consul_client
 
     def get_name(self) -> str:
-        return self.service.service_key
+        return self.service.get_service_key()
 
     def check(self):
-        LOGGER.info("Checking service config: {}".format(self.service.service_key))
+        LOGGER.info("Checking service config: {}".format(self.service.get_service_key()))
 
         try:
-            response, consul_config = self.consul_client.kv.get(self.service.config_path.compose_path())
+            response, new_config = self.consul_client.kv.get(self.service.get_config_path())
         except Exception as exc:
             return self.service.notify_failed_service_check(Response.create_error_result_with_exception_only(exc))
 
@@ -99,9 +100,16 @@ class KVConfigWatcherTask(Task):
             self.service.notify_failed_service_check(response)
             return
 
-        if self.last_modify_index < consul_config.modify_index:
-            successful = self.service.reconfigure(consul_config.value)
-            if successful:
-                self.last_modify_index = consul_config.modify_index
-            else:
-                LOGGER.error("Reconfiguration was not successful")
+        successful = False
+        if self.last_modify_index == 0:
+            successful = self.service.configure(new_config.value)
+        elif self.last_modify_index < new_config.modify_index:
+            successful = self.service.reconfigure(new_config.value)
+        else:
+            LOGGER.debug("Config still up to date: {}".format(self.last_modify_index))
+            return
+
+        if successful:
+            self.last_modify_index = new_config.modify_index
+        else:
+            LOGGER.error("Reconfiguration was not successful")

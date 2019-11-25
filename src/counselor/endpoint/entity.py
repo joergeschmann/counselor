@@ -7,16 +7,16 @@ class ServiceDefinition:
     """
 
     def __init__(self, key: str, address=None, port=0, tags=None, meta=None, content_hash=None):
-        if tags is None:
-            tags = []
-        if meta is None:
-            meta = {}
-
         self.key = key
         self.address = address
         self.port = port
-        self.tags = tags
-        self.meta = meta
+
+        self.tags: List[str] = []
+        self.set_tags(tags)
+
+        self.meta: dict = {}
+        self.set_meta(meta)
+
         self.content_hash = content_hash
         self.check = None
         self.interval = None
@@ -26,6 +26,18 @@ class ServiceDefinition:
     @staticmethod
     def new_simple_service_definition(key: str, tags=None, meta=None):
         return ServiceDefinition(key=key, tags=tags, meta=meta)
+
+    def set_tags(self, tags: List[str] = None):
+        if tags is None:
+            tags = []
+
+        self.tags = tags
+
+    def set_meta(self, meta: dict = None):
+        if meta is None:
+            meta = {}
+
+        self.meta = meta
 
     def validate(self):
         if self.port and not isinstance(self.port, int):

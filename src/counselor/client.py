@@ -1,55 +1,25 @@
-from .endpoint.agent import Agent
-from .endpoint.http_client import HttpRequest
-from .endpoint.keyvalue import KV
-
-
-class ConsulConfig:
-    """Config to connect to Consul.
-    """
-
-    def __init__(self,
-                 host="127.0.0.1",
-                 port=8500,
-                 version='v1',
-                 datacenter=None,
-                 token=None,
-                 scheme='http',
-                 transport=HttpRequest()):
-        self.host = host
-        self.port = port
-        self.version = version
-        self.datacenter = datacenter
-        self.token = token
-        self.scheme = scheme
-        self.transport = transport
-
-    def compose_base_uri(self) -> str:
-        """Return the base URI for API requests.
-        """
-
-        if self.port:
-            return '{0}://{1}:{2}/{3}'.format(self.scheme, self.host, self.port, self.version)
-        return '{0}://{1}/{2}'.format(self.scheme, self.host, self.version)
+from .endpoint.agent_endpoint import AgentEndpoint
+from .endpoint.http_endpoint import EndpointConfig
+from .endpoint.kv_endpoint import KVEndpoint
 
 
 class Consul(object):
     """Client to use the API.
     """
 
-    def __init__(self, config=ConsulConfig()):
+    def __init__(self, config=EndpointConfig()):
         self.config = config
-        base_uri = config.compose_base_uri()
-        self._agent = Agent(base_uri, config.transport, config.datacenter, config.token)
-        self._kv = KV(base_uri, config.transport, config.datacenter, config.token)
+        self._agent = AgentEndpoint(endpoint_config=config, url_parts=["agent"])
+        self._kv = KVEndpoint(endpoint_config=config, url_parts=["kv"])
 
     @property
-    def agent(self) -> Agent:
+    def agent(self) -> AgentEndpoint:
         """Get the agent service instance.
         """
         return self._agent
 
     @property
-    def kv(self) -> KV:
+    def kv(self) -> KVEndpoint:
         """Get the key value service instance.
         """
         return self._kv

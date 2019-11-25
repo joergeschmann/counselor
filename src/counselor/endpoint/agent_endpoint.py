@@ -1,24 +1,28 @@
 from typing import List
 
-from .check import Check
+from .check_endpoint import CheckEndpoint
 from .common import Response
 from .decoder import ServiceDefinitionListDecoder, JsonDecoder, Decoder
 from .entity import ServiceDefinition
-from .http_endpoint import HttpEndpoint
-from .service import Service
+from .http_endpoint import HttpEndpoint, EndpointConfig
+from .service_endpoint import ServiceEndpoint
 
 
-class Agent(HttpEndpoint):
+class AgentEndpoint(HttpEndpoint):
     """The Consul agent registers, deregisters and checks services.
     """
 
-    def __init__(self, uri, request, datacenter=None, token=None):
+    def __init__(self, endpoint_config: EndpointConfig, url_parts: List[str]):
         """Create a new instance of the Agent.
         """
 
-        super(Agent, self).__init__(uri, request, datacenter, token)
-        self.check = Check(self._base_uri, request, datacenter, token)
-        self.service = Service(self._base_uri, request, datacenter, token)
+        if url_parts is None:
+            url_parts = ["agent"]
+
+        super(AgentEndpoint, self).__init__(endpoint_config, url_parts)
+
+        self.check = CheckEndpoint(endpoint_config, url_parts + ["check"])
+        self.service = ServiceEndpoint(endpoint_config, url_parts + ["service"])
 
     def checks(self) -> (Response, List[str]):
         """Return all the checks that are registered with the local agent.

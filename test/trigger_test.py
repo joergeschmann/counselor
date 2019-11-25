@@ -21,7 +21,7 @@ class LoggerTask(Task):
         print("{}s task's current time : {}".format(self.interval.total_seconds(), time.ctime()))
 
 
-class TestTrigger(unittest.TestCase):
+class TriggerTests(unittest.TestCase):
     def test_triggers(self):
         trigger = Trigger()
 

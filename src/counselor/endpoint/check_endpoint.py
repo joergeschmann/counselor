@@ -1,13 +1,20 @@
+from typing import List
+
 from .common import Response
-from .http_endpoint import HttpEndpoint
+from .http_endpoint import HttpEndpoint, EndpointConfig
 
 
-class Check(HttpEndpoint):
+class CheckEndpoint(HttpEndpoint):
     """
         At the moment checks are implemented as periodic http requests with our own watcher implementation.
         The next step is to involve the consul agent.
         TODO: implement
     """
+
+    def __init__(self, endpoint_config: EndpointConfig, url_parts: List[str]):
+        if url_parts is None:
+            url_parts = ["agent", "check"]
+        super().__init__(endpoint_config, url_parts)
 
     def register(self, name, script=None, check_id=None, interval=None, ttl=None, notes=None, http=None):
         response = self.put_response(url_parts=['register'], query=None, payload={

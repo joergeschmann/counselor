@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='counselor',
-      version='0.2.0',
+      version='0.2.1',
       description='Package to interact with HashiCorp Consul',
       long_description=long_description,
       long_description_content_type="text/markdown",

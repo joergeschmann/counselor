@@ -44,3 +44,6 @@ class Response:
     def as_string(self) -> str:
         return "successful: {} \nkind: {} \nmessage: {} \nexc: {}".format(self.successful, self.kind, self.message,
                                                                           self.exc)
+
+    class ErrorTypes:
+        NotDefined = "NotDefined"

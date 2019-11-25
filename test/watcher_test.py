@@ -4,10 +4,11 @@ import uuid
 from datetime import timedelta
 from threading import Event
 
-from counselor.client import ConsulConfig, Consul
-from counselor.config import KVConfigPath
-from counselor.endpoint.common import Response
-from counselor.watcher import ReconfigurableService, KVConfigWatcherTask
+from src.counselor.client import Consul
+from src.counselor.config import KVConfigPath
+from src.counselor.endpoint.common import Response
+from src.counselor.endpoint.http_endpoint import EndpointConfig
+from src.counselor.watcher import ReconfigurableService, KVConfigWatcherTask
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
@@ -15,9 +16,19 @@ LOGGER = logging.getLogger(__name__)
 
 class TestService(ReconfigurableService):
     def __init__(self, service_key: str, config_path: KVConfigPath, current_config: dict = None):
-        super().__init__(service_key, config_path, current_config)
-        self.last_config = None
+        self.service_key = service_key
+        self.config_path = config_path
+        self.last_config = current_config
         self.failed_service_check = False
+
+    def get_service_key(self) -> str:
+        return self.service_key
+
+    def get_current_config(self) -> dict:
+        return self.last_config
+
+    def get_config_path(self) -> str:
+        return self.config_path.compose_path()
 
     def notify_failed_service_check(self, response: Response):
         LOGGER.info("Failed service check: {}".format(response.as_string()))
@@ -35,10 +46,10 @@ class TestService(ReconfigurableService):
         return True
 
 
-class KVConfigWatcherTaskTest(unittest.TestCase):
+class KVConfigWatcherTaskTests(unittest.TestCase):
     def setUp(self):
         LOGGER.info("Setting up")
-        self.consul_config = ConsulConfig()
+        self.consul_config = EndpointConfig()
         self.consul = Consul(config=self.consul_config)
         self.kv_config_path = KVConfigPath(project="project", feature="feature", service="service",
                                            detail="config", env="dev")
@@ -59,7 +70,7 @@ class KVConfigWatcherTaskTest(unittest.TestCase):
         set_response = self.consul.kv.set(self.kv_config_path.compose_path(), test_config)
         self.assertTrue(set_response.successful)
 
-        test_service = TestService(uuid.uuid4().hex, self.kv_config_path)
+        test_service = TestService(uuid.uuid4().hex, self.kv_config_path, test_config)
 
         interval = timedelta(seconds=1)
         stop_event = Event()

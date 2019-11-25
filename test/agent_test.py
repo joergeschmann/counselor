@@ -3,6 +3,7 @@ import unittest
 
 from src.counselor import client
 from src.counselor.endpoint.encoder import ServiceDefinition
+from src.counselor.endpoint.http_endpoint import EndpointConfig
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ class AgentTests(unittest.TestCase):
     def setUp(self):
         LOGGER.info("Setting up")
         self.test_service_key = "unit-test-service"
-        self.consul_config = client.ConsulConfig()
+        self.consul_config = EndpointConfig()
         self.consul = client.Consul(config=self.consul_config)
 
     def tearDown(self):
@@ -40,7 +41,7 @@ class AgentTests(unittest.TestCase):
         LOGGER.info(found_service_definition.as_json())
 
         service_definition.meta["version"] = "v1.1"
-        update_status = self.consul.agent.service.register(service_definition)
+        update_status = self.consul.agent.service.update(service_definition)
         LOGGER.info("Update status: {}".format(update_status.as_string()))
 
         search_status, found_services = self.consul.agent.services()

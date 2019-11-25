@@ -18,17 +18,19 @@ class ReconfigurableService:
     Extend this class to encapsulate all the logic to reconfigure your service.
     """
 
-    def __init__(self, service_key: str, config_path: KVConfigPath, current_config: dict):
-        if service_key == "":
-            raise ValueError("Please define a unique service key")
-        if config_path is None:
-            raise ValueError("Please define a key value path for the service config")
+    def get_service_key(self) -> str:
+        """Return a unique service key to identify your service
+        """
+        pass
 
-        # TODO: url encode the values to be safe because it will be part of the request url
+    def get_config_path(self) -> str:
+        """Return the config path where the config is stored, for example via KVConfigPath.compose_path()
+        """
+        pass
 
-        self.service_key = service_key
-        self.config_path = config_path
-        self.current_config = current_config
+    def get_current_config(self) -> dict:
+        """Return the current config as a dictionary"""
+        pass
 
     def notify_failed_service_check(self, response: Response):
         """If the service fails to fetch the ServiceDefinition from Consul, this method is called.
