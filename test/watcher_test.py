@@ -51,7 +51,7 @@ class KVConfigWatcherTaskTests(unittest.TestCase):
         LOGGER.info("Setting up")
         self.consul_config = EndpointConfig()
         self.consul = Consul(config=self.consul_config)
-        self.kv_config_path = KVConfigPath(project="project", feature="feature", service="service",
+        self.kv_config_path = KVConfigPath(project="project", domain="feature", service="service",
                                            detail="config", env="dev")
 
     def tearDown(self):

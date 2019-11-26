@@ -2,15 +2,15 @@ from .endpoint.common import Response
 
 
 class KVConfigPath:
-    def __init__(self, project: str, feature: str, service: str, detail: str = "config", env: str = "dev"):
+    def __init__(self, project: str, domain: str, service: str, detail: str = "config", env: str = "dev"):
         self.project = project
-        self.feature = feature
+        self.domain = domain
         self.service = service
         self.detail = detail
         self.env = env
 
     def compose_path(self) -> str:
-        return "{}/{}/{}/{}/{}".format(self.project, self.env, self.feature, self.service, self.detail)
+        return "{}/{}/{}/{}/{}".format(self.project, self.env, self.domain, self.service, self.detail)
 
 
 class ReconfigurableService:
