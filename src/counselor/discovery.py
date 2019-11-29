@@ -58,6 +58,11 @@ class ServiceDiscovery:
         """
         return self._consul.kv.set(path, config)
 
+    def merge_config(self, path: str, updates: dict) -> Response:
+        """Merge updates with existing config."""
+
+        return self._consul.kv.merge(path, updates)
+
     def update_config_by_service(self, service: ReconfigurableService) -> Response:
         return self.update_config(service.get_config_path(), service.get_current_config())
 

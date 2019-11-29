@@ -76,6 +76,22 @@ class KVEndpoint(HttpEndpoint):
         response = self.put_response(url_parts=[path], query=query_params, payload=value)
         return Response.create_from_http_response(response)
 
+    def merge(self, path: str, updates: dict) -> Response:
+        """Try to fetch an existing config. If successful, overwrite the values with the updates.
+        Otherwise assume that there is no config yet and try to store it."""
+
+        response, config = self.get_raw(path)
+        if not response.successful:
+            return self.set(path, updates)
+
+        if not isinstance(config, dict):
+            return Response.create_error_result_with_message_only("Current config is not a dict")
+
+        for key in updates.keys():
+            config[key] = updates[key]
+
+        return self.set(path, config)
+
     def delete(self, path, recurse=False) -> Response:
         """Remove an item.
         """

@@ -58,9 +58,15 @@ class KeyValueTests(unittest.TestCase):
         set_response = self.consul.kv.set(key, test_config)
         self.assertTrue(set_response.successful)
 
-        get_response, found_entry = self.consul.kv.get(key)
+        updates = {"active": False, "strategy": {"goal": "none"}}
+        merge_response = self.consul.kv.merge(key, updates)
+        self.assertTrue(merge_response)
+
+        get_response, found_entry = self.consul.kv.get_raw(key)
         self.assertTrue(get_response.successful)
-        self.assertEqual(test_config, found_entry.value, "Configs do not match")
+        self.assertNotEqual(test_config, found_entry, "Configs should diverge")
+        self.assertEqual(test_config.get("pairs"), found_entry.get("pairs"))
+        self.assertEqual(updates.get("active"), found_entry.get("active"))
 
     def test_recursive_kv(self):
         service_config_path = key = self.test_key_prefix + "/service"
