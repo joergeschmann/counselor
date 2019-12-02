@@ -1,9 +1,12 @@
 NAME = counselor
 
-.PHONY: requirements install install-deploy-tools build deploy-test deploy-prod
+.PHONY: requirements test install install-deploy-tools build deploy-test deploy-prod
 
 requirements:
 	pip install -r requirements.txt
+
+test:
+	python -m unittest discover -s test -p '*.py'
 
 install: requirements
 	pip install --user .
