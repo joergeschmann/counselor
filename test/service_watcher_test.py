@@ -3,10 +3,10 @@ import unittest
 from datetime import timedelta
 from threading import Event
 
-from counselor.client import ConsulClient
-from counselor.endpoint.entity import ServiceDefinition
-from counselor.endpoint.http_endpoint import EndpointConfig
-from counselor.service_watcher import ServiceUpdateListener, ServiceWatcherTask
+from src.counselor.client import ConsulClient
+from src.counselor.endpoint.entity import ServiceDefinition
+from src.counselor.endpoint.http_endpoint import EndpointConfig
+from src.counselor.service_watcher import ServiceUpdateListener, ServiceWatcherTask
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)

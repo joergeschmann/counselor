@@ -1,4 +1,5 @@
 class Operators:
+    """Operator constants"""
     OPERATOR_EQUALITY = "=="
     OPERATOR_INEQUALITY = "!="
 
@@ -12,6 +13,7 @@ class Operators:
 
 
 class Fields:
+    """Field name constants"""
     FIELD_TAGS = "Tags"
     FIELD_META = "Meta"
 

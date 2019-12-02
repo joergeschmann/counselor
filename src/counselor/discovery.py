@@ -3,13 +3,13 @@ from datetime import timedelta
 from threading import Event
 from typing import List
 
-from counselor.kv_updater import KVUpdater
 from .client import ConsulClient
 from .endpoint.common import Response
 from .endpoint.entity import ServiceDefinition
 from .endpoint.http_endpoint import EndpointConfig
 from .endpoint.kv_endpoint import KVPath
 from .filter import KeyValuePair, Filter, Operators
+from .kv_updater import KVUpdater
 from .kv_watcher import KVWatcherTask, ConfigUpdateListener
 from .trigger import Trigger
 
@@ -43,8 +43,7 @@ class ServiceDiscovery:
     """Facade to interact with Consul. The use case is that you have a service you want to register in Consul.
     The service definition is stored to the service module, whereas the configuration for the service is persisted in
     the Consul KV store. After your service is registered, you can start a config watcher, that periodically
-    fetches the config from Consul KV store. If there is a change in the configuration, the service is notified
-    via ReconfigurableService interface to reconfigure itself.
+    fetches the config from Consul KV store. If there is a change in the configuration, the service is notified to reconfigure itself.
     """
 
     def __init__(self, consul_client: ConsulClient):

@@ -3,6 +3,8 @@ from .endpoint.common import Response
 
 
 class KVUpdater:
+    """Helper class to conveniently update configs in Consul KV store."""
+
     def __init__(self, kv_path: str, consul_client: ConsulClient):
         self.kv_path = kv_path
         self.consul_client = consul_client

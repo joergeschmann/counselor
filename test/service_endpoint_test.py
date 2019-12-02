@@ -1,10 +1,10 @@
 import logging
 import unittest
 
-from counselor.filter import Filter, Operators
 from src.counselor.endpoint.entity import ServiceDefinition
 from src.counselor.endpoint.http_endpoint import EndpointConfig
 from src.counselor.endpoint.service_endpoint import ServiceEndpoint
+from src.counselor.filter import Filter, Operators
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)

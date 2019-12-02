@@ -2,13 +2,15 @@ import logging
 from datetime import timedelta
 from threading import Event
 
-from counselor.client import ConsulClient
-from counselor.watcher import Task
+from .client import ConsulClient
+from .watcher import Task
 
 LOGGER = logging.getLogger(__name__)
 
 
 class ConfigUpdateListener:
+    """Interface to provide the methods to call, when an update is available"""
+
     def get_path(self) -> str:
         """Return the KV path to check for updates"""
         pass
