@@ -4,12 +4,11 @@ from requests import Response, Session
 
 LOGGER = logging.getLogger(__name__)
 
-CONTENT_FORM = 'application/x-www-form-urlencoded; charset=utf-8'
-CONTENT_JSON = 'application/json; charset=utf-8'
+HEADER_KEY_CONTENT_TYPE = 'Content-Type'
+HEADER_KEY_CONSUL_TOKEN = 'X-Consul-Token'
 
-HEADER_JSON = {
-    'Content-Type': CONTENT_JSON
-}
+HEADER_VALUE_CONTENT_FORM = 'application/x-www-form-urlencoded; charset=utf-8'
+HEADER_VALUE_CONTENT_JSON = 'application/json; charset=utf-8'
 
 
 class HttpResponse(object):
@@ -38,9 +37,14 @@ class HttpResponse(object):
 class HttpRequest(object):
     """The Request adapter class"""
 
-    def __init__(self, timeout=None):
+    def __init__(self, token=None, timeout=None):
         self.session = Session()
+        if token is not None:
+            self.session.headers.setdefault(HEADER_KEY_CONSUL_TOKEN, token)
         self.timeout = timeout
+
+    def __del__(self):
+        self.session.close()
 
     def get(self, uri) -> HttpResponse:
         """Send a HTTP get request.
@@ -54,7 +58,7 @@ class HttpRequest(object):
         """
         LOGGER.debug("POST %s with %r", uri, data)
         if headers is None:
-            headers = HEADER_JSON
+            headers = {HEADER_KEY_CONTENT_TYPE: HEADER_VALUE_CONTENT_JSON}
 
         http_response = self.session.post(uri, data=None, headers=headers, timeout=self.timeout, json=data)
         return HttpResponse.from_http_response(http_response)
@@ -64,7 +68,7 @@ class HttpRequest(object):
         """
         LOGGER.debug("PUT %s with %r", uri, data)
         if headers is None:
-            headers = HEADER_JSON
+            headers = {HEADER_KEY_CONTENT_TYPE: HEADER_VALUE_CONTENT_JSON}
 
         data_type = type(data)
         if data_type == str:

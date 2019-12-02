@@ -20,13 +20,15 @@ class EndpointConfig:
                  datacenter=None,
                  token=None,
                  scheme='http',
-                 transport=HttpRequest()):
+                 transport=None):
         self.host = host
         self.port = port
         self.version = version
         self.datacenter = datacenter
         self.token = token
         self.scheme = scheme
+        if transport is None:
+            transport = HttpRequest(token=token)
         self.transport = transport
 
     def compose_base_uri(self) -> str:

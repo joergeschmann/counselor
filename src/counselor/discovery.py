@@ -3,16 +3,40 @@ from datetime import timedelta
 from threading import Event
 from typing import List
 
-from .client import Consul
-from .config import ReconfigurableService
+from counselor.kv_updater import KVUpdater
+from .client import ConsulClient
 from .endpoint.common import Response
 from .endpoint.entity import ServiceDefinition
 from .endpoint.http_endpoint import EndpointConfig
+from .endpoint.kv_endpoint import KVPath
 from .filter import KeyValuePair, Filter, Operators
+from .kv_watcher import KVWatcherTask, ConfigUpdateListener
 from .trigger import Trigger
-from .watcher import KVConfigWatcherTask
 
 LOGGER = logging.getLogger(__name__)
+
+
+class ReconfigurableService:
+    """Class to hold all the information about a service."""
+
+    def __init__(self, service_key: str, config_path: KVPath, current_definition: ServiceDefinition = None,
+                 current_config: dict = None, tags: List[str] = None,
+                 meta: dict = None):
+        self.service_key = service_key
+        self._config_path = config_path
+        self.current_definition = current_definition
+        self.current_config = current_config
+        self.tags = tags
+        self.meta = meta
+
+    def compose_config_path(self) -> str:
+        """Return the config path where the config is stored, for example via KVConfigPath.compose_path()
+        """
+        return self._config_path.compose_path()
+
+    def to_service_definition(self) -> ServiceDefinition:
+        """Create an instance of ServiceDefinition"""
+        return ServiceDefinition(key=self.service_key, tags=self.tags, meta=self.meta)
 
 
 class ServiceDiscovery:
@@ -23,8 +47,8 @@ class ServiceDiscovery:
     via ReconfigurableService interface to reconfigure itself.
     """
 
-    def __init__(self, client: Consul):
-        self._consul = client
+    def __init__(self, consul_client: ConsulClient):
+        self._consul_client = consul_client
         self._trigger = Trigger()
 
     @staticmethod
@@ -33,10 +57,10 @@ class ServiceDiscovery:
 
     @staticmethod
     def new_service_discovery_with_consul_config(config: EndpointConfig) -> 'ServiceDiscovery':
-        return ServiceDiscovery.new_service_discovery_with_consul_client(Consul(config))
+        return ServiceDiscovery.new_service_discovery_with_consul_client(ConsulClient(config))
 
     @staticmethod
-    def new_service_discovery_with_consul_client(client: Consul) -> 'ServiceDiscovery':
+    def new_service_discovery_with_consul_client(client: ConsulClient) -> 'ServiceDiscovery':
         return ServiceDiscovery(client)
 
     @staticmethod
@@ -45,60 +69,70 @@ class ServiceDiscovery:
         return ServiceDiscovery.new_service_discovery_with_consul_config(
             EndpointConfig(host=consul_ip, port=consul_port))
 
+    def fetch_config_or_default(self, path: str, default: dict, merge: False):
+        """Try to fetch the config from Consul. If a config is available, merge it if needed and return it.
+        If there is no config available return the default."""
+        response, config = self.fetch_config_by_path(path)
+        if config:
+            if not merge:
+                return config
+
+            for key in config.keys():
+                default[key] = config[key]
+
+            return config
+
+        return default
+
     def fetch_config_by_path(self, path: str) -> (Response, dict):
-        return self._consul.kv.get_raw(path)
+        return self._consul_client.kv.get_raw(path)
 
     def store_config(self, path: str, config: dict) -> Response:
         """Store the config in Consul.
         """
-        return self._consul.kv.set(path, config)
+        return self._consul_client.kv.set(path, config)
 
     def update_config(self, path: str, config: dict) -> Response:
         """Update the config in Consul.
         """
-        return self._consul.kv.set(path, config)
+        return self._consul_client.kv.set(path, config)
 
     def merge_config(self, path: str, updates: dict) -> Response:
         """Merge updates with existing config."""
 
-        return self._consul.kv.merge(path, updates)
+        return self._consul_client.kv.merge(path, updates)
 
     def update_config_by_service(self, service: ReconfigurableService) -> Response:
-        return self.update_config(service.get_config_path(), service.get_current_config())
+        return self.update_config(service.compose_config_path(), service.current_config)
 
-    def register_service(self, service_key: str, tags=None, meta=None) -> Response:
+    def register_service(self, service: ReconfigurableService) -> Response:
         """Register a ServiceDefinition in Consul.
         """
 
-        LOGGER.info("Registering service definition {}".format(service_key))
+        LOGGER.info("Registering service definition {}".format(service.service_key))
 
-        service_definition = ServiceDefinition(key=service_key, tags=tags, meta=meta)
-
-        return self._update_service_definition(service_definition)
+        return self._update_service_definition(service.to_service_definition())
 
     def get_service_details(self, service_key) -> (Response, ServiceDefinition):
-        return self._consul.agent.service.get_details(service_key)
+        return self._consul_client.service.get_details(service_key)
 
-    def register_service_and_store_config(self, reconfigurable_service: ReconfigurableService, tags: List[str],
-                                          meta: dict) -> Response:
-        register_response = self.register_service(reconfigurable_service.get_service_key(), tags, meta)
+    def register_service_and_store_config(self, service: ReconfigurableService) -> Response:
+        register_response = self.register_service(service)
         if not register_response.successful:
             return register_response
 
-        return self.store_config(reconfigurable_service.get_config_path(), reconfigurable_service.get_current_config())
+        return self.store_config(service.compose_config_path(), service.current_config)
 
-    def update_service(self, service_key: str, tags: List[str] = None, meta: dict = None) -> Response:
+    def update_service(self, service: ReconfigurableService) -> Response:
         """Update the ServiceDefinition in Consul.
         Update is the same as a registration.
         """
-        LOGGER.info("Updating service definition {}".format(service_key))
+        LOGGER.info("Updating service definition {}".format(service.service_key))
 
-        service_definition = ServiceDefinition(key=service_key, tags=tags, meta=meta)
-
-        return self._update_service_definition(service_definition)
+        return self._update_service_definition(service.to_service_definition())
 
     def _update_service_definition(self, service_definition: ServiceDefinition) -> Response:
-        return self._consul.agent.service.register(service_definition)
+        return self._consul_client.service.register(service_definition)
 
     def deregister_service(self, service_key: str) -> Response:
         """Delete the ServiceDefinition in Consul. Also stops the watcher if still active.
@@ -114,7 +148,7 @@ class ServiceDiscovery:
                 LOGGER.info("Stopping config watch first")
                 self.stop_config_watch()
 
-            return self._consul.agent.service.deregister(service_key)
+            return self._consul_client.service.deregister(service_key)
         except Exception as exc:
             return Response.create_error_result_with_message_only("{}".format(exc))
 
@@ -141,30 +175,30 @@ class ServiceDiscovery:
             query_tuple = ('filter', filter_expression)
             filter_tuples.append(query_tuple)
 
-        return self._consul.agent.services(filter_tuples)
+        return self._consul_client.service.search(filter_tuples)
 
-    def add_multiple_config_watches(self, services: List[ReconfigurableService], check_interval: timedelta,
+    def add_multiple_config_watches(self, listeners: List[ConfigUpdateListener], check_interval: timedelta,
                                     stop_event=Event()):
         """Add a list of config watchers
         """
 
-        if services is None or len(services) == 0:
+        if listeners is None or len(listeners) == 0:
             return
 
-        for service in services:
-            if service is None:
+        for listener in listeners:
+            if listener is None:
                 continue
 
-            LOGGER.info("Adding config watch for {}".format(service.get_service_key()))
-            watcher_task = KVConfigWatcherTask(service, self._consul, check_interval, stop_event)
+            LOGGER.info("Adding config watch for {}".format(listener.get_path()))
+            watcher_task = KVWatcherTask(listener, self._consul_client, check_interval, stop_event)
             self._trigger.add_task(watcher_task)
 
-    def add_config_watch(self, service: ReconfigurableService, check_interval: timedelta,
+    def add_config_watch(self, listener: ConfigUpdateListener, check_interval: timedelta,
                          stop_event=Event()):
         """Create a watcher that periodically checks for config changes.
         """
 
-        self.add_multiple_config_watches(services=[service], check_interval=check_interval, stop_event=stop_event)
+        self.add_multiple_config_watches(listeners=[listener], check_interval=check_interval, stop_event=stop_event)
 
     def clear_watchers(self):
         """Remove all the watchers"""
@@ -192,3 +226,9 @@ class ServiceDiscovery:
             self._trigger.stop_tasks()
         except Exception as exc:
             LOGGER.info("Error when stopping watcher: {}".format(exc))
+
+    def get_number_of_active_watchers(self) -> int:
+        return self._trigger.get_number_of_active_tasks()
+
+    def create_kv_updater_from_service(self, service: ReconfigurableService) -> KVUpdater:
+        return KVUpdater(service.compose_config_path(), self._consul_client)

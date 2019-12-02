@@ -1,45 +1,78 @@
 import logging
 import unittest
+from datetime import timedelta
+from threading import Event
 
-from src.counselor.config import KVConfigPath
-
-from src.counselor.endpoint.common import Response
-from src.counselor.watcher import ReconfigurableService
+from counselor.client import ConsulClient
+from counselor.endpoint.entity import ServiceDefinition
+from counselor.endpoint.http_endpoint import EndpointConfig
+from counselor.service_watcher import ServiceUpdateListener, ServiceWatcherTask
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 
-class TestService(ReconfigurableService):
-    def __init__(self, service_key: str, config_path: KVConfigPath, current_config: dict = None):
+class TestListener(ServiceUpdateListener):
+    def __init__(self, service_key):
         self.service_key = service_key
-        self.config_path = config_path
-        self.last_config = current_config
-        self.failed_service_check = False
+        self.initialized = False
+        self.updated = False
+        self.current_service_definition: ServiceDefinition = None
 
     def get_service_key(self) -> str:
         return self.service_key
 
-    def get_current_config(self) -> dict:
-        return self.last_config
-
-    def get_config_path(self) -> str:
-        return self.config_path.compose_path()
-
-    def notify_failed_service_check(self, response: Response):
-        LOGGER.info("Failed service check: {}".format(response.as_string()))
-        self.failed_service_check = True
-
-    def configure(self, config=dict) -> bool:
-        LOGGER.info("Configured: {}".format(config))
-        self.last_config = config
-        self.failed_service_check = False
+    def on_init(self, service_definition: ServiceDefinition) -> bool:
+        self.initialized = True
+        self.current_service_definition = service_definition
         return True
 
-    def reconfigure(self, new_config=dict) -> bool:
-        LOGGER.info("New configuration received: {}".format(new_config))
-        self.configure(new_config)
+    def on_update(self, service_definition: ServiceDefinition) -> bool:
+        self.updated = True
+        self.current_service_definition = service_definition
         return True
+
+
+class ServiceWatcherTests(unittest.TestCase):
+    def setUp(self):
+        LOGGER.info("Setting up")
+        self.consul_config = EndpointConfig()
+        self.consul_client = ConsulClient(config=self.consul_config)
+        self.service_key = "service-watcher-test-service"
+
+    def tearDown(self):
+        LOGGER.info("Cleaning up")
+        response = self.consul_client.service.deregister(self.service_key)
+        if not response.successful:
+            LOGGER.info("Cound not deregister service: {}".format(response.as_string()))
+
+    def test_service_listener(self):
+        meta = {
+            "version": "v1.0.0",
+            "status": "Serving"
+        }
+        service_definition = ServiceDefinition(key=self.service_key, tags=["unit-test"], meta=meta)
+        register_response = self.consul_client.service.register(service_definition)
+        self.assertTrue(register_response.successful, register_response.as_string())
+
+        update_listener = TestListener(self.service_key)
+        interval = timedelta(seconds=1)
+        stop_event = Event()
+        service_watcher_task = ServiceWatcherTask(listener=update_listener, consul_client=self.consul_client,
+                                                  interval=interval, stop_event=stop_event)
+
+        service_watcher_task.check()
+        self.assertTrue(update_listener.initialized)
+        self.assertFalse(update_listener.updated)
+        self.assertEqual(meta, update_listener.current_service_definition.meta)
+
+        meta["status"] = "OnHold"
+        update_response = self.consul_client.service.update(service_definition)
+        self.assertTrue(update_response.successful)
+
+        service_watcher_task.check()
+        self.assertTrue(update_listener.updated)
+        self.assertEqual(meta, update_listener.current_service_definition.meta)
 
 
 if __name__ == '__main__':

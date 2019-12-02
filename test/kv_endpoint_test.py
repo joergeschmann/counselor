@@ -13,8 +13,8 @@ class KeyValueTests(unittest.TestCase):
     def setUp(self):
         LOGGER.info("Setting up")
         self.test_key_prefix = "test"
-        self.consul_config = EndpointConfig()
-        self.consul = client.Consul(config=self.consul_config)
+        self.consul_config = EndpointConfig(token="")
+        self.consul = client.ConsulClient(config=self.consul_config)
 
     def tearDown(self):
         LOGGER.info("Cleaning up")

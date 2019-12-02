@@ -1,6 +1,7 @@
 import logging
 import unittest
 
+from counselor.filter import Filter, Operators
 from src.counselor.endpoint.entity import ServiceDefinition
 from src.counselor.endpoint.http_endpoint import EndpointConfig
 from src.counselor.endpoint.service_endpoint import ServiceEndpoint
@@ -37,15 +38,30 @@ class ServiceTests(unittest.TestCase):
         self.assertTrue(register_status.successful)
 
         get_status, found_service_definition = self.service_endpoint.get_details(service_definition.key)
-        self.assertTrue(get_status.successful)
+        self.assertTrue(get_status.successful, get_status.as_string())
         self.assertEqual(service_definition.key, found_service_definition.key)
         self.assertEqual(service_definition.port, found_service_definition.port)
         self.assertEqual(service_definition.meta["base_time"], found_service_definition.meta["base_time"])
 
         service_definition.meta["version"] = "v1.1"
         update_status = self.service_endpoint.update(service_definition)
-        self.assertTrue(update_status.successful)
+        self.assertTrue(update_status.successful, update_status.as_string())
 
-        search_status, found_service_definition = self.service_endpoint.get_details(service_definition.key)
-        self.assertTrue(search_status.successful)
+        get_status, found_service_definition = self.service_endpoint.get_details(service_definition.key)
+        self.assertTrue(get_status.successful, get_status.as_string())
         self.assertEqual(service_definition.meta["version"], found_service_definition.meta["version"])
+
+        filter_expression = Filter.new_meta_filter("status", Operators.OPERATOR_EQUALITY, "active").as_expression()
+        query_tuple = ('filter', filter_expression)
+        filter_tuples = [query_tuple]
+
+        search_status, found_services = self.service_endpoint.search(filter_tuples)
+        self.assertTrue(search_status.successful, search_status.as_string())
+        self.assertEqual(service_definition.meta["version"], found_services[0].meta["version"])
+
+        deregister_status = self.service_endpoint.deregister(service_definition.key)
+        self.assertTrue(deregister_status.successful, deregister_status.as_string())
+
+
+if __name__ == '__main__':
+    unittest.main()

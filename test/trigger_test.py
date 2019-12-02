@@ -14,8 +14,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class LoggerTask(Task):
-    def __init__(self, interval=timedelta(seconds=1), stop_event=Event()):
-        super().__init__(interval=interval, stop_event=stop_event)
+    def __init__(self, name: str, interval=timedelta(seconds=1), stop_event=Event()):
+        super().__init__(name=name, interval=interval, stop_event=stop_event)
 
     def check(self):
         print("{}s task's current time : {}".format(self.interval.total_seconds(), time.ctime()))
@@ -26,10 +26,10 @@ class TriggerTests(unittest.TestCase):
         trigger = Trigger()
 
         stop_event = Event()
-        two_sec_task = LoggerTask(timedelta(seconds=2), stop_event)
+        two_sec_task = LoggerTask("2s", timedelta(seconds=2), stop_event)
         trigger.add_task(two_sec_task)
 
-        three_sec_task = LoggerTask(timedelta(seconds=3), stop_event)
+        three_sec_task = LoggerTask("3s", timedelta(seconds=3), stop_event)
         trigger.add_task(three_sec_task)
 
         trigger.run()

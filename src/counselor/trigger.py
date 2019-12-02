@@ -29,6 +29,14 @@ class Trigger(Thread):
         close_event.wait()
         self.stop_tasks()
 
+    def get_number_of_active_tasks(self) -> int:
+        active = 0
+        for t in self.tasks:
+            if t.is_alive():
+                active += 1
+
+        return active
+
     def run(self):
         LOGGER.info("Starting tasks...")
 

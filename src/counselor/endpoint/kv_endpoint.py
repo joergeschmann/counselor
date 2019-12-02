@@ -10,6 +10,30 @@ from .http_endpoint import HttpEndpoint, EndpointConfig
 LOGGER = logging.getLogger(__name__)
 
 
+class KVPath:
+    def __init__(self, project: str, domain: str, service: str, detail: str = "config", env: str = "dev"):
+        self.project = project
+        self.domain = domain
+        self.service = service
+        self.detail = detail
+        self.env = env
+
+    @staticmethod
+    def parse_from_path(path: str) -> 'KVPath':
+        splitted_path = path.split('/')
+        if len(splitted_path) != 5:
+            raise ValueError("Path should have 5 parts")
+
+        return KVPath(project=splitted_path[0],
+                      domain=splitted_path[2],
+                      service=splitted_path[3],
+                      detail=splitted_path[4],
+                      env=splitted_path[1])
+
+    def compose_path(self) -> str:
+        return "{}/{}/{}/{}/{}".format(self.project, self.env, self.domain, self.service, self.detail)
+    
+
 class KVEndpoint(HttpEndpoint):
     """Key value store interface to consul. This class is meant to store dicts as values.
 
