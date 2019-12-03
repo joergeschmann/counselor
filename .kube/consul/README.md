@@ -23,6 +23,9 @@ If you want to enable ACL, you can add the following snippet to the config.yaml.
 ## Cluster
 Cluster is the same as the simple setup, but with 3 nodes, to do tests with multiple nodes.
 
+# Single node ACL
+Here you have a single node with ACL enabled.
+
 ## Secure Cluster
 The secure cluster also has 3 nodes and is secured with ACL and TLS enabled.
 

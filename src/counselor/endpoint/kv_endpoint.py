@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from .common import Response
-from .decoder import JsonDecoder, ConsulKVDecoder
+from .decoder import JsonDecoder, ConsulKVDecoder, ConsulKVListDecoder
 from .entity import ConsulKeyValue
 from .http_client import HttpResponse
 from .http_endpoint import HttpEndpoint, EndpointConfig
@@ -32,7 +32,7 @@ class KVPath:
 
     def compose_path(self) -> str:
         return "{}/{}/{}/{}/{}".format(self.project, self.env, self.domain, self.service, self.detail)
-    
+
 
 class KVEndpoint(HttpEndpoint):
     """Key value store interface to consul. This class is meant to store dicts as values.
@@ -46,7 +46,9 @@ class KVEndpoint(HttpEndpoint):
         super().__init__(endpoint_config, url_parts)
 
     def get_raw(self, path) -> (Response, dict):
+        """Return the raw config as dict, without the Consul specific fields."""
         query_params = {'raw': True}
+
         response = self._get(path=path, query_params=query_params)
 
         endpoint_response = Response.create_from_http_response(response)
@@ -64,7 +66,6 @@ class KVEndpoint(HttpEndpoint):
         """Get a value.
         Raw means without the Consul metadata like CreateIndex and ModifyIndex.
         """
-
         response = self._get(path=path)
 
         endpoint_response = Response.create_from_http_response(response)
@@ -77,6 +78,23 @@ class KVEndpoint(HttpEndpoint):
             endpoint_response.update_by_decode_result(decoder)
 
         return endpoint_response, consul_kv
+
+    def get_recursive(self, path) -> (Response, List[ConsulKeyValue]):
+        """Return an array of all the entires from the path downwards"""
+        query_params = {'recurse': True}
+
+        response = self._get(path=path, query_params=query_params)
+
+        endpoint_response = Response.create_from_http_response(response)
+        if not endpoint_response.successful:
+            return endpoint_response, None
+
+        decoder = ConsulKVListDecoder()
+        result_list = decoder.decode(response.payload)
+        if not decoder.successful:
+            endpoint_response.update_by_decode_result(decoder)
+
+        return endpoint_response, result_list
 
     def _get(self, path: str, query_params=None) -> HttpResponse:
         if path is None or path == "":

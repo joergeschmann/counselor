@@ -25,7 +25,7 @@ class ServiceUpdateListener:
 
 
 class ServiceWatcherTask(Task):
-    """Fetches the service definition from Consul services and notifies the ReconfigurableService if there is an update.
+    """Fetches the service definition from Consul services and notifies the ServiceUpdateListener if there is an update.
     """
 
     def __init__(self, listener: ServiceUpdateListener, consul_client: ConsulClient, interval: timedelta,

@@ -17,10 +17,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ServiceConfigUpdateListener(ConfigUpdateListener):
-    @staticmethod
-    def create_from_reconfigurable_service(service: ReconfigurableService) -> 'ServiceConfigUpdateListener':
-        return ServiceConfigUpdateListener(service.compose_config_path(), service.current_config)
-
     def __init__(self, kv_path: str, current_config: dict = None):
         self.kv_path = kv_path
         self.current_config = current_config
@@ -31,15 +27,16 @@ class ServiceConfigUpdateListener(ConfigUpdateListener):
         return self.kv_path
 
     def on_init(self, config: dict) -> bool:
-        self.initialized = True
-        self.current_config = config
+        for key in config.keys():
+            self.current_config[key] = config[key]
         LOGGER.info("init: {}".format(config))
+        self.initialized = True
         return True
 
     def on_update(self, new_config: dict) -> bool:
-        self.updated = True
         self.current_config = new_config
         LOGGER.info("update: {}".format(new_config))
+        self.updated = True
         return True
 
 
@@ -70,7 +67,7 @@ class ServiceDiscoveryTests(unittest.TestCase):
         self.consul.service.deregister(self.service_key)
 
     def test_filter_services(self):
-        register_status = self.service_discovery.register_service(self.service)
+        register_status = self.service_discovery.register_service(self.service.to_service_definition())
         self.assertTrue(register_status.successful,
                         "Could not register service: {}".format(register_status.as_string()))
 
@@ -116,12 +113,13 @@ class ServiceDiscoveryTests(unittest.TestCase):
         self.assertTrue(response.successful, response.as_string())
         self.assertEqual(self.service.current_config, found_config)
 
-        register_status = self.service_discovery.register_service(self.service)
+        register_status = self.service_discovery.register_service(self.service.to_service_definition())
 
         self.assertTrue(register_status.successful,
                         "Could not register service: {}".format(register_status.as_string()))
 
-        config_update_listener = ServiceConfigUpdateListener.create_from_reconfigurable_service(self.service)
+        config_update_listener = ServiceConfigUpdateListener(self.service.compose_config_path(),
+                                                             self.service.current_config)
         interval = timedelta(seconds=1)
         stop_event = Event()
         self.service_discovery.add_config_watch(config_update_listener, interval, stop_event)
@@ -132,7 +130,7 @@ class ServiceDiscoveryTests(unittest.TestCase):
 
         reconfigure_config_key = "reconfigure_action"
         reconfigure_config_value = "restart"
-        kv_updater = self.service_discovery.create_kv_updater_from_service(self.service)
+        kv_updater = self.service_discovery.create_kv_updater_for_path(self.service.compose_config_path())
         update_status = kv_updater.merge({reconfigure_config_key: reconfigure_config_value})
         self.assertTrue(update_status.successful, "Update was not successful {}".format(update_status.as_string()))
 

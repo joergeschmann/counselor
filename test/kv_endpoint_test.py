@@ -1,4 +1,3 @@
-import json
 import logging
 import unittest
 
@@ -69,7 +68,7 @@ class KeyValueTests(unittest.TestCase):
         self.assertEqual(updates.get("active"), found_entry.get("active"))
 
     def test_recursive_kv(self):
-        service_config_path = key = self.test_key_prefix + "/service"
+        service_config_path = self.test_key_prefix + "/service"
         service_config = {
             "env": "test",
             "pairs": ["btc", "etc", "ren"],
@@ -97,12 +96,10 @@ class KeyValueTests(unittest.TestCase):
         response = self.consul.kv.set(s2_config_path, s2_config)
         self.assertTrue(response.successful, response.as_string())
 
-        query_params = {"recurse": True}
-        http_response = self.consul.kv._get(path=service_config_path, query_params=query_params)
-        self.assertTrue(http_response.is_successful())
+        response, kv_list = self.consul.kv.get_recursive(service_config_path)
+        self.assertTrue(response.successful)
 
-        parsed_config = json.loads(http_response.payload)
-        self.assertEqual(3, len(parsed_config))
+        self.assertEqual(3, len(kv_list))
 
 
 if __name__ == '__main__':

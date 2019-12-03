@@ -60,15 +60,7 @@ class JsonDecoder(Decoder):
 
 class ConsulKVDecoder(JsonDecoder):
 
-    def decode(self, payload) -> ConsulKeyValue:
-        parsed_json = self._parse_json(payload)
-
-        if isinstance(parsed_json, List):
-            if len(parsed_json) == 0:
-                return ConsulKeyValue()
-            else:
-                parsed_json = parsed_json[0]
-
+    def create_kv_from_json(self, parsed_json):
         value = parsed_json.get('Value', {})
         if isinstance(value, str) or isinstance(value, bytes):
             decoded_value = base64.b64decode(value)
@@ -85,6 +77,29 @@ class ConsulKVDecoder(JsonDecoder):
             create_index=parsed_json.get('CreateIndex', 0),
             modify_index=parsed_json.get('ModifyIndex', 0)
         )
+
+    def decode(self, payload) -> ConsulKeyValue:
+        parsed_json = self._parse_json(payload)
+
+        if isinstance(parsed_json, List):
+            if len(parsed_json) == 0:
+                return ConsulKeyValue()
+            else:
+                parsed_json = parsed_json[0]
+
+        return self.create_kv_from_json(parsed_json)
+
+
+class ConsulKVListDecoder(ConsulKVDecoder):
+
+    def decode(self, payload) -> List[ConsulKeyValue]:
+        parsed_json_list = self._parse_json(payload)
+
+        result_list = []
+        for e in parsed_json_list:
+            result_list.append(self.create_kv_from_json(e))
+
+        return result_list
 
 
 class ServiceDefinitionDecoder(JsonDecoder):

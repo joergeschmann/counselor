@@ -17,14 +17,18 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ReconfigurableService:
-    """Class to hold all the information about a service."""
+    """Base class to hold all the information about a service."""
 
-    def __init__(self, service_key: str, config_path: KVPath, current_definition: ServiceDefinition = None,
-                 current_config: dict = None, tags: List[str] = None,
+    @staticmethod
+    def create_with_service_definition(service_definition: ServiceDefinition, config_path: KVPath,
+                                       current_config: dict) -> 'ReconfigurableService':
+        return ReconfigurableService(service_definition.key, config_path=config_path, current_config=current_config,
+                                     tags=service_definition.tags, meta=service_definition.meta)
+
+    def __init__(self, service_key: str, config_path: KVPath, current_config: dict = None, tags: List[str] = None,
                  meta: dict = None):
         self.service_key = service_key
         self._config_path = config_path
-        self.current_definition = current_definition
         self.current_config = current_config
         self.tags = tags
         self.meta = meta
@@ -86,6 +90,16 @@ class ServiceDiscovery:
     def fetch_config_by_path(self, path: str) -> (Response, dict):
         return self._consul_client.kv.get_raw(path)
 
+    def fetch_config_recursively(self, path: str) -> (Response, List[dict]):
+        result_list = []
+
+        response, kv_list = self._consul_client.kv.get_recursive(path)
+        if response.successful and kv_list is not None:
+            for e in kv_list:
+                result_list.append(e.value)
+
+        return response, result_list
+
     def store_config(self, path: str, config: dict) -> Response:
         """Store the config in Consul.
         """
@@ -101,34 +115,34 @@ class ServiceDiscovery:
 
         return self._consul_client.kv.merge(path, updates)
 
-    def update_config_by_service(self, service: ReconfigurableService) -> Response:
-        return self.update_config(service.compose_config_path(), service.current_config)
+    def delete_config(self, path: str, recurse=False):
+        return self._consul_client.kv.delete(path, recurse=recurse)
 
-    def register_service(self, service: ReconfigurableService) -> Response:
+    def register_service(self, service_definition: ServiceDefinition) -> Response:
         """Register a ServiceDefinition in Consul.
         """
 
-        LOGGER.info("Registering service definition {}".format(service.service_key))
+        LOGGER.info("Registering service definition {}".format(service_definition.key))
 
-        return self._update_service_definition(service.to_service_definition())
+        return self._update_service_definition(service_definition)
 
     def get_service_details(self, service_key) -> (Response, ServiceDefinition):
         return self._consul_client.service.get_details(service_key)
 
+    def update_service(self, service_definition: ServiceDefinition) -> Response:
+        """Update the ServiceDefinition in Consul.
+        Update is the same as a registration.
+        """
+        LOGGER.info("Updating service definition {}".format(service_definition.key))
+
+        return self._update_service_definition(service_definition)
+
     def register_service_and_store_config(self, service: ReconfigurableService) -> Response:
-        register_response = self.register_service(service)
+        register_response = self.register_service(service.to_service_definition())
         if not register_response.successful:
             return register_response
 
         return self.store_config(service.compose_config_path(), service.current_config)
-
-    def update_service(self, service: ReconfigurableService) -> Response:
-        """Update the ServiceDefinition in Consul.
-        Update is the same as a registration.
-        """
-        LOGGER.info("Updating service definition {}".format(service.service_key))
-
-        return self._update_service_definition(service.to_service_definition())
 
     def _update_service_definition(self, service_definition: ServiceDefinition) -> Response:
         return self._consul_client.service.register(service_definition)
@@ -229,5 +243,5 @@ class ServiceDiscovery:
     def get_number_of_active_watchers(self) -> int:
         return self._trigger.get_number_of_active_tasks()
 
-    def create_kv_updater_from_service(self, service: ReconfigurableService) -> KVUpdater:
-        return KVUpdater(service.compose_config_path(), self._consul_client)
+    def create_kv_updater_for_path(self, config_path: str) -> KVUpdater:
+        return KVUpdater(config_path, self._consul_client)
