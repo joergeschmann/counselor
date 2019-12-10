@@ -14,17 +14,17 @@ class Decoder(object):
     """
 
     def __init__(self):
-        self.exc = None
+        self.exception = None
         self.error_message = ""
         self.successful = True
 
     def decode(self, payload):
         return payload
 
-    def set_error_message(self, message: str = "", exc: Exception = None):
+    def set_error_message(self, message: str = "", exception: Exception = None):
         self.successful = False
         self.error_message = message
-        self.exc = exc
+        self.exception = exception
 
 
 class BooleanDecoder(Decoder):

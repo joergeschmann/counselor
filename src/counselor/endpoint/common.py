@@ -6,11 +6,11 @@ class Response:
     """StatusResponse is used as a standard response to indicate whether a request to Consul was successful or not.
     """
 
-    def __init__(self, successful=True, kind="", message="", exc: Exception = None):
+    def __init__(self, successful=True, kind="", message="", exception: Exception = None):
         self.successful = successful
         self.kind = kind
         self.message = message
-        self.exc = exc
+        self.exception = exception
 
     @staticmethod
     def create_successful_result():
@@ -21,8 +21,8 @@ class Response:
         return Response(successful=False, kind=kind, message=message)
 
     @staticmethod
-    def create_error_result_with_exception_only(exc: Exception):
-        return Response(successful=False, exc=exc)
+    def create_error_result_with_exception_only(exception: Exception):
+        return Response(successful=False, exception=exception)
 
     @staticmethod
     def create_error_result_with_message_only(message=""):
@@ -39,11 +39,12 @@ class Response:
         if not decoder.successful:
             self.kind = "DecodeError"
             self.message = decoder.error_message
-            self.exc = decoder.exc
+            self.exception = decoder.exception
 
     def as_string(self) -> str:
-        return "successful: {} \nkind: {} \nmessage: {} \nexc: {}".format(self.successful, self.kind, self.message,
-                                                                          self.exc)
+        return "successful: {} \nkind: {} \nmessage: {} \nexception: {}".format(self.successful, self.kind,
+                                                                                self.message,
+                                                                                self.exception)
 
     class ErrorTypes:
         NotDefined = "NotDefined"
