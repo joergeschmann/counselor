@@ -39,7 +39,7 @@ class ServiceWatcherTask(Task):
         return self.listener.get_service_key()
 
     def check(self):
-        LOGGER.info("Checking service: {}".format(self.get_service_key()))
+        self.log_with_interval("Checking service: {}".format(self.get_service_key()))
 
         try:
             response, new_service_definition = self.consul_client.service.get_details(
@@ -62,5 +62,6 @@ class ServiceWatcherTask(Task):
 
         if successful:
             self.last_service_config_hash = new_service_definition.content_hash
+            LOGGER.info("Successfully updated to config hash {}".format(self.last_service_config_hash))
         else:
             LOGGER.error("Reconfiguration was not successful")

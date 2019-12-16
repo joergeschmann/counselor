@@ -15,10 +15,10 @@ LOGGER = logging.getLogger(__name__)
 
 class LoggerTask(Task):
     def __init__(self, name: str, interval=timedelta(seconds=1), stop_event=Event()):
-        super().__init__(name=name, interval=interval, stop_event=stop_event)
+        super().__init__(name=name, interval=interval, stop_event=stop_event, log_interval_seconds=2)
 
     def check(self):
-        print("{}s task's current time : {}".format(self.interval.total_seconds(), time.ctime()))
+        self.log_with_interval("{}s task's current time : {}".format(self.interval.total_seconds(), time.ctime()))
 
 
 class TriggerTests(unittest.TestCase):

@@ -39,7 +39,7 @@ class KVWatcherTask(Task):
         return self.listener.get_path()
 
     def check(self):
-        LOGGER.info("Checking kv config: {}".format(self.get_path()))
+        self.log_with_interval("Checking kv config: {}".format(self.get_path()))
 
         try:
             response, new_config = self.consul_client.kv.get(self.get_path())
@@ -62,5 +62,6 @@ class KVWatcherTask(Task):
 
         if successful:
             self.last_modify_index = new_config.modify_index
+            LOGGER.info("Successfully updated to modify index {}".format(self.last_modify_index))
         else:
             LOGGER.error("Reconfiguration was not successful")

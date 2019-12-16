@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import timedelta
 from threading import Event, Thread
 
@@ -9,11 +10,19 @@ class Task(Thread):
     """Base class to represent a Task that is executed by a trigger.
     """
 
-    def __init__(self, name: str, interval: timedelta, stop_event: Event, daemon=True):
+    def __init__(self, name: str, interval: timedelta, stop_event: Event, log_interval_seconds=10, daemon=True):
         Thread.__init__(self, daemon=daemon)
         self.interval = interval
         self.stop_event = stop_event
         self.name = name
+        self.last_log_time = 0
+        self.info_log_interval_seconds = log_interval_seconds
+
+    def log_with_interval(self, message):
+        current_timestamp = int(time.time())
+        if (current_timestamp - self.last_log_time) > self.info_log_interval_seconds:
+            LOGGER.info(message)
+            self.last_log_time = current_timestamp
 
     def get_name(self):
         """Return a unique name to identify the task
