@@ -10,7 +10,8 @@ class Task(Thread):
     """Base class to represent a Task that is executed by a trigger.
     """
 
-    def __init__(self, name: str, interval: timedelta, stop_event: Event, log_interval_seconds=10, daemon=True):
+    def __init__(self, name: str, interval: timedelta, stop_event: Event, log_interval_seconds=3 * 60 * 60,
+                 daemon=True):
         Thread.__init__(self, daemon=daemon)
         self.interval = interval
         self.stop_event = stop_event

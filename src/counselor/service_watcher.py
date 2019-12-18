@@ -29,8 +29,8 @@ class ServiceWatcherTask(Task):
     """
 
     def __init__(self, listener: ServiceUpdateListener, consul_client: ConsulClient, interval: timedelta,
-                 stop_event: Event):
-        super().__init__(listener.get_service_key(), interval, stop_event)
+                 stop_event: Event, log_interval_seconds=3 * 60 * 60):
+        super().__init__(listener.get_service_key(), interval, stop_event, log_interval_seconds)
         self.listener = listener
         self.last_service_config_hash = ""
         self.consul_client = consul_client
