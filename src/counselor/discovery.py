@@ -202,16 +202,19 @@ class ServiceDiscovery:
             if listener is None:
                 continue
 
-            LOGGER.info("Adding config watch for {}".format(listener.get_path()))
-            watcher_task = KVWatcherTask(listener, self._consul_client, check_interval, stop_event)
-            self._trigger.add_task(watcher_task)
+            self.add_config_watch(listener, check_interval=check_interval, stop_event=stop_event)
 
     def add_config_watch(self, listener: ConfigUpdateListener, check_interval: timedelta,
                          stop_event=Event()):
         """Create a watcher that periodically checks for config changes.
         """
 
-        self.add_multiple_config_watches(listeners=[listener], check_interval=check_interval, stop_event=stop_event)
+        if listener is None:
+            return
+
+        LOGGER.info("Adding config watch for {}".format(listener.get_path()))
+        watcher_task = KVWatcherTask(listener, self._consul_client, check_interval, stop_event)
+        self._trigger.add_task(watcher_task)
 
     def clear_watchers(self):
         """Remove all the watchers"""
