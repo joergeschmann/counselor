@@ -1,17 +1,19 @@
 import logging
 from typing import List
 
-from .common import Response
-from .decoder import ServiceDefinitionDecoder, ServiceDefinitionListDecoder
-from .encoder import Encoder
-from .entity import ServiceDefinition
-from .http_endpoint import HttpEndpoint, EndpointConfig
+from counselor.endpoint.common import Response
+from counselor.endpoint.decoder import ServiceDefinitionDecoder, ServiceDefinitionListDecoder
+from counselor.endpoint.encoder import Encoder
+from counselor.endpoint.entity import ServiceDefinition
+from counselor.endpoint.http_endpoint import HttpEndpoint, EndpointConfig
 
 LOGGER = logging.getLogger(__name__)
 
 
 class ServiceEndpoint(HttpEndpoint):
-    """Service endpoint for Consul. It uses the the agent service endpoint, which is easier than the low level service endpoint.
+    """
+        Service endpoint for Consul.
+        It uses the the agent service endpoint, which is easier than the low level service endpoint.
     """
 
     def __init__(self, endpoint_config: EndpointConfig, url_parts: List[str] = None):

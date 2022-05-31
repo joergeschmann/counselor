@@ -1,8 +1,8 @@
 import logging
 import unittest
 
-from src.counselor import client
-from src.counselor.endpoint.http_endpoint import EndpointConfig
+from counselor import client
+from counselor.endpoint.http_endpoint import EndpointConfig
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)

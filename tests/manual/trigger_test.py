@@ -1,13 +1,14 @@
 import logging
+import os
 import signal
 import time
 import unittest
 from datetime import timedelta
 from threading import Event
 
-from src.counselor.signal import SignalHandler
-from src.counselor.trigger import Trigger
-from src.counselor.watcher import Task
+from counselor.sys_signals import SignalHandler
+from counselor.trigger import Trigger
+from counselor.watcher import Task
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
@@ -36,9 +37,10 @@ class TriggerTests(unittest.TestCase):
 
         close_event = Event()
         signal_handler = SignalHandler(close_event)
+        signal.signal(signal.SIGTERM, signal_handler.handle)
 
         close_event.wait(7)
-        signal_handler.handle(signal.SIGKILL.value, None)
+        os.kill(os.getpid(), signal.SIGTERM)
         close_event.wait(1)
 
         trigger.stop_tasks()

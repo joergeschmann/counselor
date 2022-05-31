@@ -1,7 +1,7 @@
 from typing import List
 
-from .common import Response
-from .http_endpoint import HttpEndpoint, EndpointConfig
+from counselor.endpoint.common import Response
+from counselor.endpoint.http_endpoint import HttpEndpoint, EndpointConfig
 
 
 class CheckEndpoint(HttpEndpoint):

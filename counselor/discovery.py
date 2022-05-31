@@ -3,15 +3,15 @@ from datetime import timedelta
 from threading import Event
 from typing import List
 
-from .client import ConsulClient
-from .endpoint.common import Response
-from .endpoint.entity import ServiceDefinition
-from .endpoint.http_endpoint import EndpointConfig
-from .endpoint.kv_endpoint import KVPath
-from .filter import KeyValuePair, Filter, Operators
-from .kv_updater import KVUpdater
-from .kv_watcher import KVWatcherTask, ConfigUpdateListener
-from .trigger import Trigger
+from counselor.client import ConsulClient
+from counselor.endpoint.common import Response
+from counselor.endpoint.entity import ServiceDefinition
+from counselor.endpoint.http_endpoint import EndpointConfig
+from counselor.endpoint.kv_endpoint import KVPath
+from counselor.filter import KeyValuePair, Filter, Operators
+from counselor.kv_updater import KVUpdater
+from counselor.kv_watcher import KVWatcherTask, ConfigUpdateListener
+from counselor.trigger import Trigger
 
 LOGGER = logging.getLogger(__name__)
 

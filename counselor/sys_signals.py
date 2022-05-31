@@ -16,5 +16,5 @@ class SignalHandler:
             signal.signal(sig, self.handle)
 
     def handle(self, signum, frame):
-        LOGGER.info("Signal received: {}".format(signal.Signals(signum).name))
+        LOGGER.info("Signal received: {} - {}".format(signal.Signals(signum).name, frame))
         self.parent_event.set()

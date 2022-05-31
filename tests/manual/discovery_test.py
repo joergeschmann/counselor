@@ -5,12 +5,12 @@ import uuid
 from datetime import timedelta
 from threading import Event
 
-from src.counselor import client
-from src.counselor.discovery import ServiceDiscovery, ReconfigurableService
-from src.counselor.endpoint.http_endpoint import EndpointConfig
-from src.counselor.endpoint.kv_endpoint import KVPath
-from src.counselor.filter import KeyValuePair
-from src.counselor.kv_watcher import ConfigUpdateListener
+from counselor import client
+from counselor.discovery import ServiceDiscovery, ReconfigurableService
+from counselor.endpoint.http_endpoint import EndpointConfig
+from counselor.endpoint.kv_endpoint import KVPath
+from counselor.filter import KeyValuePair
+from counselor.kv_watcher import ConfigUpdateListener
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)

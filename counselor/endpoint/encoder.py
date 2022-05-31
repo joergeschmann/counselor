@@ -1,6 +1,6 @@
 import logging
 
-from .entity import ServiceDefinition
+from counselor.endpoint.entity import ServiceDefinition
 
 LOGGER = logging.getLogger(__name__)
 

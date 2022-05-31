@@ -6,7 +6,7 @@ requirements:
 	pip install -r requirements.txt
 
 test:
-	python -m unittest discover -s test -p '*.py'
+	python -m unittest discover -v -s ./tests/unit/ -p '*test*.py'
 
 install: requirements
 	pip install --user .
@@ -15,8 +15,8 @@ install-deploy-tools:
 	python -m pip install --user --upgrade setuptools wheel launchpadlib keyring twine
 
 clean-build-and-dist:
-	rm -rf ./build/*
-	rm -rf ./dist/*
+	rm -rf build/
+	rm -rf *.egg-info
 
 build: clean-build-and-dist
 	python setup.py sdist bdist_wheel

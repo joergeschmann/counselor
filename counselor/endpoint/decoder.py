@@ -3,8 +3,8 @@ import json
 import logging
 from typing import List
 
-from .encoder import Encoder
-from .entity import ConsulKeyValue, ServiceDefinition
+from counselor.endpoint.encoder import Encoder
+from counselor.endpoint.entity import ConsulKeyValue, ServiceDefinition
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class JsonDecoder(Decoder):
             return result
 
         try:
-            result = json.loads(payload, encoding='utf-8')
+            result = json.loads(payload)
         except Exception as exc:
             self.set_error_message("Could not unmarshal", exc)
 

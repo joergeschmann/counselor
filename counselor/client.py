@@ -1,6 +1,6 @@
-from .endpoint.http_endpoint import EndpointConfig
-from .endpoint.kv_endpoint import KVEndpoint
-from .endpoint.service_endpoint import ServiceEndpoint
+from counselor.endpoint.http_endpoint import EndpointConfig
+from counselor.endpoint.kv_endpoint import KVEndpoint
+from counselor.endpoint.service_endpoint import ServiceEndpoint
 
 
 class ConsulClient(object):

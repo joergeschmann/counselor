@@ -2,8 +2,8 @@ import logging
 from datetime import timedelta
 from threading import Event
 
-from .client import ConsulClient
-from .watcher import Task
+from counselor.client import ConsulClient
+from counselor.watcher import Task
 
 LOGGER = logging.getLogger(__name__)
 

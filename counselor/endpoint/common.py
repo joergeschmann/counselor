@@ -1,5 +1,5 @@
-from .decoder import Decoder
-from .http_client import HttpResponse
+from counselor.endpoint.decoder import Decoder
+from counselor.endpoint.http_client import HttpResponse
 
 
 class Response:

@@ -2,9 +2,9 @@ import logging
 from typing import List
 from urllib.parse import urlencode
 
-from .common import Response
-from .decoder import Decoder
-from .http_client import HttpRequest, HttpResponse
+from counselor.endpoint.common import Response
+from counselor.endpoint.decoder import Decoder
+from counselor.endpoint.http_client import HttpRequest, HttpResponse
 
 LOGGER = logging.getLogger(__name__)
 

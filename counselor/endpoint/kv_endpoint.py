@@ -1,11 +1,11 @@
 import logging
 from typing import List
 
-from .common import Response
-from .decoder import JsonDecoder, ConsulKVDecoder, ConsulKVListDecoder
-from .entity import ConsulKeyValue
-from .http_client import HttpResponse
-from .http_endpoint import HttpEndpoint, EndpointConfig
+from counselor.endpoint.common import Response
+from counselor.endpoint.decoder import JsonDecoder, ConsulKVDecoder, ConsulKVListDecoder
+from counselor.endpoint.entity import ConsulKeyValue
+from counselor.endpoint.http_client import HttpResponse
+from counselor.endpoint.http_endpoint import HttpEndpoint, EndpointConfig
 
 LOGGER = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class KVEndpoint(HttpEndpoint):
         return endpoint_response, consul_kv
 
     def get_recursive(self, path) -> (Response, List[ConsulKeyValue]):
-        """Return an array of all the entires from the path downwards"""
+        """Return an array of all the entries from the path downwards"""
         query_params = {'recurse': True}
 
         response = self._get(path=path, query_params=query_params)

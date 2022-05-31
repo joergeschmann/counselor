@@ -3,10 +3,10 @@ import unittest
 from datetime import timedelta
 from threading import Event
 
-from src.counselor.client import ConsulClient
-from src.counselor.endpoint.http_endpoint import EndpointConfig
-from src.counselor.endpoint.kv_endpoint import KVPath
-from src.counselor.kv_watcher import ConfigUpdateListener, KVWatcherTask
+from counselor.client import ConsulClient
+from counselor.endpoint.http_endpoint import EndpointConfig
+from counselor.endpoint.kv_endpoint import KVPath
+from counselor.kv_watcher import ConfigUpdateListener, KVWatcherTask
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)

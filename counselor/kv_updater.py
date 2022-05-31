@@ -1,5 +1,5 @@
-from .client import ConsulClient
-from .endpoint.common import Response
+from counselor.client import ConsulClient
+from counselor.endpoint.common import Response
 
 
 class KVUpdater:
